@@ -1,0 +1,89 @@
+{
+  "entities": {
+    "user_profiles": {
+      "title": "UserProfile",
+      "description": "Stores user study profile settings, targets, and cumulative stats",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The firebase auth user ID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string" },
+        "college": { "type": "string", "description": "College name" },
+        "cgpa": { "type": "number", "description": "Current CGPA" },
+        "targetSGPA": { "type": "number", "description": "Target SGPA" },
+        "targetLeetcode": { "type": "number", "description": "Target solved problem count" },
+        "theme": { "type": "string", "description": "Preferred customization theme" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email"]
+    },
+    "daily_logs": {
+      "title": "DailyLog",
+      "description": "Logs daily study achievements, non-negotiables list, and focus minutes",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "completedTasks": { "type": "array" },
+        "dsaSolved": { "type": "number" },
+        "focusMinutes": { "type": "number" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "date", "completedTasks", "dsaSolved", "focusMinutes"]
+    },
+    "sessions": {
+      "title": "Session",
+      "description": "Individual pomodoro or active focus study session logs",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "category": { "type": "string", "enum": ["dsa", "java", "college", "cyber", "comm", "sleep"] },
+        "duration": { "type": "number" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "category", "duration", "date", "createdAt"]
+    },
+    "tasks": {
+      "title": "Task",
+      "description": "Individual study tasks, assignments, tests, and goals",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "isCompleted": { "type": "boolean" },
+        "isRecurring": { "type": "boolean" },
+        "recurrence": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "title", "category", "dueDate", "priority", "isCompleted"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "user_profiles",
+      "description": "User settings"
+    },
+    "users/{userId}/daily_logs/{dateStr}": {
+      "schema": "daily_logs",
+      "description": "Logs categorized achievements on YYYY-MM-DD dates"
+    },
+    "users/{userId}/sessions/{sessionId}": {
+      "schema": "sessions",
+      "description": "Focus timer history"
+    },
+    "users/{userId}/tasks/{taskId}": {
+      "schema": "tasks",
+      "description": "Personal task items and objectives"
+    }
+  }
+}

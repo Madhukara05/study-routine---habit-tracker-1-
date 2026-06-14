@@ -1,0 +1,6 @@
+{
+  "name": "Study Routine & Habit Tracker",
+  "description": "Professional placement and subject study routine tracker with pomodoro focus, daily checklists, streaks, and offline synching.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

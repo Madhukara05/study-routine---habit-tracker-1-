@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Reusable Global Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 2. Validation Blueprints (Anti-Update-Gap)
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email'])
+        && data.uid == request.auth.uid
+        && data.email is string
+        && data.email.size() <= 200
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
+        && (!('college' in data) || (data.college is string && data.college.size() <= 100))
+        && (!('cgpa' in data) || (data.cgpa is number))
+        && (!('targetSGPA' in data) || (data.targetSGPA is number))
+        && (!('targetLeetcode' in data) || (data.targetLeetcode is number))
+        && (!('theme' in data) || (data.theme is string && data.theme.size() <= 50));
+    }
+
+    function isValidDailyLog(data, userId) {
+      return data.keys().hasAll(['userId', 'date', 'completedTasks', 'dsaSolved', 'focusMinutes'])
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.date is string
+        && data.date.size() == 10
+        && data.completedTasks is list
+        && data.completedTasks.size() <= 20
+        && data.dsaSolved is number
+        && data.dsaSolved >= 0
+        && data.focusMinutes is number
+        && data.focusMinutes >= 0
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000));
+    }
+
+    function isValidSession(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'category', 'duration', 'date', 'createdAt'])
+        && data.id is string
+        && data.id.size() <= 128
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.category is string
+        && data.category.size() <= 128
+        && data.duration is number
+        && data.duration >= 0
+        && data.date is string
+        && data.date.size() == 10;
+    }
+
+    function isValidTask(data, userId) {
+      return data.keys().hasAll(['id', 'userId', 'title', 'category', 'dueDate', 'priority', 'isCompleted'])
+        && data.id is string
+        && data.id.size() <= 128
+        && data.userId == userId
+        && data.userId == request.auth.uid
+        && data.title is string
+        && data.title.size() <= 200
+        && data.category is string
+        && data.category.size() <= 128
+        && data.dueDate is string
+        && data.dueDate.size() == 10
+        && data.priority is string
+        && (data.priority == 'low' || data.priority == 'medium' || data.priority == 'high')
+        && data.isCompleted is bool;
+    }
+
+    // Core Matches
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(incoming()) && incoming().createdAt == request.time;
+      allow update: if isOwner(userId) && isValidUserProfile(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt;
+      allow delete: if false;
+
+      match /daily_logs/{dateStr} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(dateStr) && isValidDailyLog(incoming(), userId) && incoming().createdAt == request.time;
+        allow update: if isOwner(userId) && isValidId(dateStr) && isValidDailyLog(incoming(), userId) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt;
+        allow delete: if isOwner(userId) && isValidId(dateStr);
+      }
+
+      match /sessions/{sessionId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(sessionId) && isValidSession(incoming(), userId) && incoming().createdAt == request.time;
+        allow update: if isOwner(userId) && isValidId(sessionId) && isValidSession(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(sessionId);
+      }
+
+      match /tasks/{taskId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId) && incoming().createdAt == request.time;
+        allow update: if isOwner(userId) && isValidId(taskId) && isValidTask(incoming(), userId) && (!('createdAt' in incoming()) || (incoming().createdAt == existing().createdAt));
+        allow delete: if isOwner(userId) && isValidId(taskId);
+      }
+    }
+  }
+}
